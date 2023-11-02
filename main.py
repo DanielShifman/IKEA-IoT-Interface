@@ -275,12 +275,45 @@ def load_devs(config: dict):
 def set_windows_icon():
     # If OS is Windows, set icon
     if sys.platform != 'win32': return
-    print('Setting icon')
     app_id = u'IKEA Smart Device Interface'
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
 
 
+class DeviceWindow(QWidget):
+    def __init__(self, config: dict, devs: dict, dev_name: str, dev_list: list):
+        super().__init__()
+        self.dev_list = dev_list
+        self.config = config
+        self.devs = devs
+        self.dev_name = dev_name
+        self.dev_id = devs[dev_name]
+        self.dev_obj = self.get_dev_obj()
+        layout = QVBoxLayout()
+        self.setWindowTitle(f"{dev_name} - Interface")
+        self.create_id_button(layout)
+        self.setLayout(layout)
+
+    def identify(self):
+        identify_device(self.config['dirigera_ip'], self.config['dirigera_port'], self.config['token'],
+                        self.devs[self.dev_name])
+
+    def create_id_button(self, layout: QVBoxLayout):
+        id_button = QPushButton('Identify')
+        id_button.clicked.connect(lambda: self.identify())
+        if (self.dev_obj["type"]) == "controller":
+            id_button.setEnabled(False)
+        layout.addWidget(id_button)
+
+    def get_dev_obj(self):
+        for dev in self.dev_list:
+            if dev['id'] == self.dev_id:
+                return dev
+
+
 def run_gui(config: dict, devs: dict):
+    dev_list = list_devices(config['dirigera_ip'], config['dirigera_port'], config['token'])
+    print(dev_list)
+
     set_windows_icon()
     app = QApplication(sys.argv)
 
@@ -295,9 +328,16 @@ def run_gui(config: dict, devs: dict):
 
     # Create a button for each device
     dev_butts = {}
+    dev_windows = {}
 
     def dev_button_clicked(dev_name: str):
-        identify_device(config['dirigera_ip'], config['dirigera_port'], config['token'], devs[dev_name])
+        # Create a new window for the device
+        if dev_name not in dev_windows:
+            dev_window = DeviceWindow(config, devs, dev_name, dev_list)
+            dev_windows[dev_name] = dev_window
+        else:
+            dev_windows[dev_name].activateWindow()
+        dev_windows[dev_name].show()
 
     for dev in devs:
         dev_butts[dev] = QPushButton(dev)
