@@ -8,9 +8,10 @@ import string
 import random
 
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QLabel, QGridLayout, QHBoxLayout
 import sys
 import requests
+from urllib3.exceptions import InsecureRequestWarning
 
 global freshFlag
 
@@ -51,7 +52,7 @@ def authorise(ip: str, port: str, verification: str):
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
     r = requests.get(url, params=payload, headers=headers, verify=False)
-    print('Response: ' + r.text)
+    # print('Response: ' + r.text)
     auth_code = r.json()['code']
     return auth_code
 
@@ -120,7 +121,7 @@ def get_token(ip, port, auth_code, verification):
     payload = str(
         'grant_type=authorization_code&code=' + auth_code + '&name=' + socket.gethostname() + '&code_verifier=' + verification)
     r = requests.post(url, data=payload, headers=headers, verify=False)
-    print('Response: ' + r.text)
+    # print('Response: ' + r.text)
     try:
         token = r.json()['access_token']
     except KeyError:
@@ -134,7 +135,7 @@ def get_token(ip, port, auth_code, verification):
         f.seek(0)
         json.dump(config, f, indent=4)
         f.truncate()
-    print('Token: ' + token)
+    # print('Token: ' + token)
     return token
 
 
@@ -219,6 +220,45 @@ def identify_device(ip, port, token, device_id):
         print('Error: ' + r.json()['error'])
 
 
+def set_device_attribute(ip: str, port: str, token: str, device_id: str, attribute_name: str, attribute_value, val_type: str = "string"):
+    if val_type == "bool":
+        if attribute_value.lower() == "auto":
+            # Get current value of attribute
+            device = get_device(ip, port, token, device_id)
+            device_json = json.loads(device)
+            att_val = not device_json['attributes'][attribute_name]
+        elif attribute_value.lower() == "true":
+            att_val = True
+        else:
+            att_val = False
+    elif val_type == "float":
+        att_val = float(attribute_value)
+    else:
+        att_val = attribute_value
+
+    attr = [
+        {
+            "attributes": {
+                attribute_name: att_val
+            }
+        }
+    ]
+    url = 'https://' + ip + ':' + port + endpoints['devices'] + '/' + device_id
+    headers = {"Authorization": "Bearer " + token}
+    r = requests.patch(url, headers=headers, verify=False, json=attr)
+    print(r.text)
+    print(r.status_code)
+    print(r.request.body)
+    # Print entire response
+    try:
+        stat = r.status_code
+        if stat != 202:
+            print('Error: ' + "Cannot set attribute " + attribute_name + " for device " + str(device_id))
+            return None
+    except KeyError:
+        print('Error: ' + r.json()['error'])
+
+
 def store_device_id(devs: dict):
     devices = {}
     for dev in devs:
@@ -229,7 +269,7 @@ def store_device_id(devs: dict):
 
 def repl(ip: str, port: str, token: str, devs: list):
     valid_commands = sorted([
-        'status', 'home', 'devices', 'device', 'identify', 'exit', 'help', 'reload devices', 'list ids'
+        'status', 'home', 'devices', 'device', 'identify', 'exit', 'help', 'reload devices', 'list ids', 'set attribute'
     ])
     while True:
         command = input('Enter command: ')
@@ -261,6 +301,13 @@ def repl(ip: str, port: str, token: str, devs: list):
         if command == 'list ids':
             for key in devs:
                 print(key)
+        if command == 'set attribute':
+            device_name: str = input('Enter device name: ')
+            attribute_name: str = input('Enter attribute name: ')
+            attribute_value: str = input('Enter attribute value: ')
+            att_type: str = input('Enter attribute type: ')
+            set_device_attribute(ip, port, token, devs[device_name], attribute_name, attribute_value, att_type)
+
 
 
 def load_devs(config: dict):
@@ -288,10 +335,32 @@ class DeviceWindow(QWidget):
         self.dev_name = dev_name
         self.dev_id = devs[dev_name]
         self.dev_obj = self.get_dev_obj()
-        layout = QVBoxLayout()
+        layout = QGridLayout()
         self.setWindowTitle(f"{dev_name} - Interface")
         self.create_id_button(layout)
         self.setLayout(layout)
+        # List all attributes of the device with their current values as buttons next to them
+        buttonable_attributes = ["isOn", "lightLevel", "colorTemperature", "colorSaturation", "colorHue"]
+        for key, value in self.dev_obj['attributes'].items():
+            if key == "customName" or key == "customImage":
+                continue
+            # Create a new horizontal layout for each attribute
+            lb_layout = QHBoxLayout()
+            # Add the key as a label
+            label = QLabel(key)
+            lb_layout.addWidget(label)
+            # Add the value as a button if it is buttonable
+            if key in buttonable_attributes:
+                button = QPushButton(str(value))
+                button.clicked.connect(lambda checked, dev_name=self.dev_name, attribute_name=key: self.set_attribute(dev_name, attribute_name))
+            else:
+                button = QLabel(str(value))
+            lb_layout.addWidget(button)
+            # Add the horizontal layout to the main layout
+            layout.addLayout(lb_layout, layout.rowCount(), 0)
+        # Set windows size to be a reasonable width relative to the width of the screen
+        self.resize(int(self.width() * 0.5), self.height())
+
 
     def identify(self):
         identify_device(self.config['dirigera_ip'], self.config['dirigera_port'], self.config['token'],
@@ -308,6 +377,9 @@ class DeviceWindow(QWidget):
         for dev in self.dev_list:
             if dev['id'] == self.dev_id:
                 return dev
+
+    def set_attribute(self, dev_name, attribute_name):
+        print(f"Setting {attribute_name} for {dev_name}")
 
 
 def run_gui(config: dict, devs: dict):
@@ -348,16 +420,24 @@ def run_gui(config: dict, devs: dict):
     app.exec()
 
 
-def main():
-    requests.packages.urllib3.disable_warnings()
+def main(args=sys.argv[1:]):
+    print(args)
+    requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
     global freshFlag
     freshFlag = False
     config = load_config()
     # check_firmware_update(config['dirigera_ip'], config['dirigera_port'], config['token'])
     devs: dict = load_devs(config)
     # Loading Complete
-    # repl(config['dirigera_ip'], config['dirigera_port'], config['token'], devs)
-    run_gui(config, devs)
+    if len(args) == 0:
+        # repl(config['dirigera_ip'], config['dirigera_port'], config['token'], devs)
+        run_gui(config, devs)
+    else:
+        dev_name = args[0]
+        dev_att = args[1]
+        new_dev_val = args[2]
+        val_type = args[3]
+        set_device_attribute(config['dirigera_ip'], config['dirigera_port'], config['token'], devs[dev_name], dev_att, new_dev_val, val_type)
 
 
 if __name__ == '__main__':
