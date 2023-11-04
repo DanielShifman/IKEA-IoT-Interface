@@ -220,7 +220,8 @@ def identify_device(ip, port, token, device_id):
         print('Error: ' + r.json()['error'])
 
 
-def set_device_attribute(ip: str, port: str, token: str, device_id: str, attribute_name: str, attribute_value, val_type: str = "string"):
+def set_device_attribute(ip: str, port: str, token: str, device_id: str, attribute_name: str, attribute_value,
+                         val_type: str = "string"):
     if val_type == "bool":
         if attribute_value.lower() == "auto":
             # Get current value of attribute
@@ -309,7 +310,6 @@ def repl(ip: str, port: str, token: str, devs: list):
             set_device_attribute(ip, port, token, devs[device_name], attribute_name, attribute_value, att_type)
 
 
-
 def load_devs(config: dict):
     with open('devices.json', 'r') as f:
         devs: dict = json.load(f)
@@ -352,7 +352,9 @@ class DeviceWindow(QWidget):
             # Add the value as a button if it is buttonable
             if key in buttonable_attributes:
                 button = QPushButton(str(value))
-                button.clicked.connect(lambda checked, dev_name=self.dev_name, attribute_name=key: self.set_attribute(dev_name, attribute_name))
+                button.clicked.connect(
+                    lambda checked, dev_name=self.dev_name, attribute_name=key: self.set_attribute(dev_name,
+                                                                                                   attribute_name))
             else:
                 button = QLabel(str(value))
             lb_layout.addWidget(button)
@@ -360,7 +362,6 @@ class DeviceWindow(QWidget):
             layout.addLayout(lb_layout, layout.rowCount(), 0)
         # Set windows size to be a reasonable width relative to the width of the screen
         self.resize(int(self.width() * 0.5), self.height())
-
 
     def identify(self):
         identify_device(self.config['dirigera_ip'], self.config['dirigera_port'], self.config['token'],
@@ -421,7 +422,6 @@ def run_gui(config: dict, devs: dict):
 
 
 def main(args=sys.argv[1:]):
-    print(args)
     requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
     global freshFlag
     freshFlag = False
@@ -437,7 +437,8 @@ def main(args=sys.argv[1:]):
         dev_att = args[1]
         new_dev_val = args[2]
         val_type = args[3]
-        set_device_attribute(config['dirigera_ip'], config['dirigera_port'], config['token'], devs[dev_name], dev_att, new_dev_val, val_type)
+        set_device_attribute(config['dirigera_ip'], config['dirigera_port'], config['token'], devs[dev_name], dev_att,
+                             new_dev_val, val_type)
 
 
 if __name__ == '__main__':
