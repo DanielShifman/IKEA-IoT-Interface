@@ -1,14 +1,19 @@
 import base64
+import colorsys
 import ctypes
 import hashlib
 import json
 import os
+import re
 import socket
 import string
 import random
 
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QLabel, QGridLayout, QHBoxLayout
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QLabel, QGridLayout, QHBoxLayout, \
+    QColorDialog, QSlider
+from PyQt5.QtCore import Qt
 import sys
 import requests
 from urllib3.exceptions import InsecureRequestWarning
@@ -43,7 +48,6 @@ def authorise(ip: str, port: str, verification: str):
     url = 'https://' + ip + ':' + port + endpoints['authorise']
     # Get url using requests and ignore invalid SSL certificate
     payload = {
-        # 'audience': "192.168.1.87",
         'response_type': 'code',
         'code_challenge_method': 'S256',
         'code_challenge': create_challenge(verification)
@@ -222,16 +226,20 @@ def identify_device(ip, port, token, device_id):
 
 def set_device_attribute(ip: str, port: str, token: str, device_id: str, attribute_name: str, attribute_value,
                          val_type: str = "string"):
+    att_val = None
     if val_type == "bool":
-        if attribute_value.lower() == "auto":
-            # Get current value of attribute
-            device = get_device(ip, port, token, device_id)
-            device_json = json.loads(device)
-            att_val = not device_json['attributes'][attribute_name]
-        elif attribute_value.lower() == "true":
-            att_val = True
+        if type(attribute_value) is bool:
+            att_val = attribute_value
         else:
-            att_val = False
+            if attribute_value.lower() == "auto":
+                # Get current value of attribute
+                device = get_device(ip, port, token, device_id)
+                device_json = json.loads(device)
+                att_val = not device_json['attributes'][attribute_name]
+            elif attribute_value.lower() == "true":
+                att_val = True
+            else:
+                att_val = False
     elif val_type == "float":
         att_val = float(attribute_value)
     else:
@@ -247,16 +255,43 @@ def set_device_attribute(ip: str, port: str, token: str, device_id: str, attribu
     url = 'https://' + ip + ':' + port + endpoints['devices'] + '/' + device_id
     headers = {"Authorization": "Bearer " + token}
     r = requests.patch(url, headers=headers, verify=False, json=attr)
-    print(r.text)
-    print(r.status_code)
     print(r.request.body)
     # Print entire response
     try:
         stat = r.status_code
         if stat != 202:
             print('Error: ' + "Cannot set attribute " + attribute_name + " for device " + str(device_id))
+            # define a regex string
+            err_resp = r"\{\"error\"\:\"Error\",\"message\"\:\"(.*)\"\}"
+            # find all matches
+            matches = re.findall(err_resp, r.text)
+            # print the matches
+            if len(matches) > 0:
+                print(matches[0])
             return None
-    except KeyError:
+    except Exception:
+        print('Error: ' + r.json()['error'])
+
+
+def set_device_attributes(ip: str, port: str, token: str, device_id: str, attr: json):
+    url = 'https://' + ip + ':' + port + endpoints['devices'] + '/' + device_id
+    headers = {"Authorization": "Bearer " + token}
+    r = requests.patch(url, headers=headers, verify=False, json=attr)
+    print(r.request.body)
+    # Print entire response
+    try:
+        stat = r.status_code
+        if stat != 202:
+            print('Error: ' + "Cannot set attributes " + str(attr) + " for device " + str(device_id))
+            # define a regex string
+            err_resp = r"\{\"error\"\:\"Error\",\"message\"\:\"(.*)\"\}"
+            # find all matches
+            matches = re.findall(err_resp, r.text)
+            # print the matches
+            if len(matches) > 0:
+                print(matches[0])
+            return None
+    except Exception:
         print('Error: ' + r.json()['error'])
 
 
@@ -340,24 +375,87 @@ class DeviceWindow(QWidget):
         self.create_id_button(layout)
         self.setLayout(layout)
         # List all attributes of the device with their current values as buttons next to them
-        buttonable_attributes = ["isOn", "lightLevel", "colorTemperature", "colorSaturation", "colorHue"]
+        buttonable_attributes = ["isOn"]
+        HSL = (None, None, 45)
+        HSLMade = False
         for key, value in self.dev_obj['attributes'].items():
+            if HSL[0] is not None and HSL[1] is not None and HSL[2] is not None and not HSLMade:
+                # Create a new horizontal layout for each attribute
+                lb_layout = QHBoxLayout()
+                # Add the key as a label
+                label = QLabel("Colour")
+                lb_layout.addWidget(label)
+                # HSL to RGB
+                HLS = (HSL[0] / 360.0, HSL[2] / 100.0, HSL[1])
+                RGB = colorsys.hls_to_rgb(HLS[0], HLS[1], HLS[2])
+                # RGB to HEX
+                self.RGB = tuple(int(x * 255) for x in RGB)
+                RGB_hex = '#%02x%02x%02x' % self.RGB
+                # Display colour as a button
+                widget = QPushButton()
+                widget.setStyleSheet("background-color: " + RGB_hex)
+                widget.clicked.connect(
+                    lambda checked, dev_name=self.dev_name, attribute_name="colorHue", value=HSL[0]: self.pick_colour(
+                        dev_name, self.RGB))
+                lb_layout.addWidget(widget)
+                layout.addLayout(lb_layout, layout.rowCount(), 0)
+                HSLMade = True
             if key == "customName" or key == "customImage":
                 continue
+            if key == "colorHue":
+                HSL = (float(value), HSL[1], HSL[2])
+            if key == "colorSaturation":
+                HSL = (HSL[0], float(value), HSL[2])
             # Create a new horizontal layout for each attribute
             lb_layout = QHBoxLayout()
             # Add the key as a label
-            label = QLabel(key)
+            firstWord = re.findall(r'^[^A-Z]*', str(key).replace("color", "colour"))
+            firstWord[0] = str(firstWord[0]).capitalize()
+            capWords = re.findall(r'[A-Z](?:[a-z]+|[A-Z]*(?=[A-Z]|$))', str(key).replace("color", "colour"))
+            capWords = list(map(lambda x: x.lower(), capWords))
+            words = firstWord + capWords
+            words = " ".join(words)
+            label = QLabel(words)
             lb_layout.addWidget(label)
+            if key == "lightLevel" and self.dev_obj["type"] == "light":
+                slider_widget = QWidget()
+                slider_layout = QHBoxLayout()
+
+                widget = QSlider(Qt.Horizontal)
+                widget.setRange(1, 100)
+                widget.setSingleStep(10)
+                widget.setValue(int(value))
+                widget.setTickInterval(10)
+                widget.setTickPosition(QSlider.TicksBothSides)
+
+                slider_label = QLabel(str(value))
+
+                self.connect_set_light_level(widget, slider_label)
+
+                # Add a stretchable space before the label to push it to the right
+                slider_layout.addWidget(widget)
+                slider_layout.addStretch(1)
+                slider_layout.addWidget(slider_label)
+
+                slider_widget.setLayout(slider_layout)
+                lb_layout.addWidget(slider_widget)
             # Add the value as a button if it is buttonable
             if key in buttonable_attributes:
-                button = QPushButton(str(value))
-                button.clicked.connect(
-                    lambda checked, dev_name=self.dev_name, attribute_name=key: self.set_attribute(dev_name,
-                                                                                                   attribute_name))
+                widget = QPushButton(str(value))
+                if str(value) == "True":
+                    widget.setStyleSheet("border: 2px solid green; border-radius: 5px; box-shadow: 2px 2px 2px grey;")
+                elif str(value) == "False":
+                    widget.setStyleSheet("border: 2px solid red; border-radius: 5px; box-shadow: 2px 2px 2px grey;")
+                self.connect_button_clicked(widget, self.dev_name, key)
+            elif key == "lightLevel" and self.dev_obj["type"] == "light":
+                pass
             else:
-                button = QLabel(str(value))
-            lb_layout.addWidget(button)
+                widget = QLabel(str(value))
+                if key == "colorHue":
+                    self.hueLabel = widget
+                if key == "colorSaturation":
+                    self.satLabel = widget
+            lb_layout.addWidget(widget)
             # Add the horizontal layout to the main layout
             layout.addLayout(lb_layout, layout.rowCount(), 0)
         # Set windows size to be a reasonable width relative to the width of the screen
@@ -366,6 +464,25 @@ class DeviceWindow(QWidget):
     def identify(self):
         identify_device(self.config['dirigera_ip'], self.config['dirigera_port'], self.config['token'],
                         self.devs[self.dev_name])
+
+    def connect_button_clicked(self, button, dev_name, attribute_name):
+        def on_button_clicked():
+            value = button.text()
+            if value == "False":
+                button.setStyleSheet("border: 2px solid green; border-radius: 5px; box-shadow: 2px 2px 2px grey;")
+            elif value == "True":
+                button.setStyleSheet("border: 2px solid red; border-radius: 5px; box-shadow: 2px 2px 2px grey;")
+            self.set_attribute(dev_name, attribute_name, value, button)
+
+        button.clicked.connect(on_button_clicked)
+
+    def connect_set_light_level(self, slider, label):
+        def on_value_changed(val):
+            self.set_attribute(self.dev_name, "lightLevel", val, None)
+            # Update slider text to show current value
+            label.setText(str(val))
+
+        slider.valueChanged.connect(on_value_changed)
 
     def create_id_button(self, layout: QVBoxLayout):
         id_button = QPushButton('Identify')
@@ -379,8 +496,69 @@ class DeviceWindow(QWidget):
             if dev['id'] == self.dev_id:
                 return dev
 
-    def set_attribute(self, dev_name, attribute_name):
-        print(f"Setting {attribute_name} for {dev_name}")
+    def set_attribute(self, dev_name, attribute_name, current_value, widget):
+        att_type = None
+        new_value = None
+        if attribute_name == "isOn":
+            att_type = "bool"
+            if current_value.lower() == "true":
+                new_value = False
+            else:
+                new_value = True
+        else:
+            att_type = "string"
+            new_value = current_value
+        print(f"Setting {attribute_name} for {dev_name} (currently {current_value}) to {new_value}")
+        set_device_attribute(self.config['dirigera_ip'], self.config['dirigera_port'], self.config['token'],
+                             self.dev_id, attribute_name, new_value, att_type)
+        print(type(widget))
+        if type(widget) is QPushButton:
+            # Update the value of the button
+            widget.setText(str(new_value))
+
+    def open_colour_picker(self, initial_hex: tuple):
+        # Convert RGB hex string to R, G, B values
+        colour = QColorDialog.getColor(parent=self,
+                                       initial=QColor.fromRgb(initial_hex[0], initial_hex[1], initial_hex[2]))
+        if colour.isValid():
+            print(colour.name())
+            print(colour.hue(), colour.saturation(), colour.value())
+            return colour.hue(), colour.saturation(), colour.value(), colour.name()
+        else:
+            return None
+
+    def pick_colour(self, dev_name, curr_rgb):
+        # Open a colour picker window
+        print("Picking colour for " + dev_name)
+        HSV = self.open_colour_picker(self.RGB)
+        if HSV is not None:
+            # Iterate through the layout and find the hue and saturation buttons
+            for i in range(1, self.layout().count()):
+                lb_layout = self.layout().itemAt(i).layout()
+                if lb_layout.itemAt(0).widget().text() == "Colour":
+                    lb_layout.itemAt(1).widget().setStyleSheet("background-color: " + HSV[3])
+                if lb_layout.itemAt(0).widget().text() == "colorHue":
+                    lb_layout.itemAt(1).widget().setText(str(HSV[0]))
+                if lb_layout.itemAt(0).widget().text() == "colorSaturation":
+                    lb_layout.itemAt(1).widget().setText(str(HSV[1] / 255))
+            self.send_colour(HSV[0], HSV[1] / 255)
+            # Update hue and saturation labels
+            self.hueLabel.setText(str(HSV[0]))
+            self.satLabel.setText(str(HSV[1] / 255))
+            # Update RGB from hex tuple
+            self.RGB = tuple(int(HSV[3][i:i + 2], 16) for i in (1, 3, 5))
+
+    def send_colour(self, hue_val: float, sat_val: float):
+        # Send the colour to the device
+        attr = [
+            {
+                "attributes": {
+                    "colorHue": hue_val,
+                    "colorSaturation": sat_val,
+                }
+            }
+        ]
+        set_device_attributes(self.config['dirigera_ip'], self.config['dirigera_port'], self.config['token'], self.dev_id, attr)
 
 
 def run_gui(config: dict, devs: dict):
