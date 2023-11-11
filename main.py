@@ -61,9 +61,9 @@ def authorise(ip: str, port: str, verification: str):
     return auth_code
 
 
-def test_connection(ip: str, port: str):
+def test_connection(ip: str, port: str, num_tries: int = 4):
     try:
-        r_ping = os.system(f"ping -n 4 -w 1 {ip}")
+        r_ping = os.system(f"ping -n {num_tries} -w 1 {ip}")
         if r_ping == 0:
             try:
                 r_https = requests.get(f"https://{ip}:{port}{endpoints['status']}", verify=False)
@@ -79,6 +79,7 @@ def test_connection(ip: str, port: str):
             return False
     except Exception:
         return False
+
 
 def load_config():
     # Check if config file exists
@@ -628,7 +629,8 @@ def main(args=sys.argv[1:]):
     devs: dict = load_devs(config)
     # Loading Complete
     # Test connection
-    while not test_connection(config['dirigera_ip'], config['dirigera_port']):
+    attempts: int = 4 if len(args) <= 1 else 1
+    while not test_connection(config['dirigera_ip'], config['dirigera_port'], num_tries=attempts):
         u_in = input(
             'Cannot connect to server. Please select an option:\n 1. Enter a different IP address\n 2. Enter a different port\n 3. All of the above.\n 4. Exit\n\n')
         match u_in:
