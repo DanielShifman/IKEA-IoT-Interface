@@ -61,6 +61,25 @@ def authorise(ip: str, port: str, verification: str):
     return auth_code
 
 
+def test_connection(ip: str, port: str):
+    try:
+        r_ping = os.system(f"ping -n 4 -w 1 {ip}")
+        if r_ping == 0:
+            try:
+                r_https = requests.get(f"https://{ip}:{port}{endpoints['status']}", verify=False)
+                if r_https.status_code == 206:
+                    return True
+                else:
+                    print(f"Error: Cannot connect to {ip}:{port}")
+                    return False
+            except Exception:
+                return False
+        else:
+            print(f"Error: Cannot ping {ip}")
+            return False
+    except Exception:
+        return False
+
 def load_config():
     # Check if config file exists
     if not os.path.isfile('config.json'):
@@ -558,7 +577,8 @@ class DeviceWindow(QWidget):
                 }
             }
         ]
-        set_device_attributes(self.config['dirigera_ip'], self.config['dirigera_port'], self.config['token'], self.dev_id, attr)
+        set_device_attributes(self.config['dirigera_ip'], self.config['dirigera_port'], self.config['token'],
+                              self.dev_id, attr)
 
 
 def run_gui(config: dict, devs: dict):
@@ -607,8 +627,30 @@ def main(args=sys.argv[1:]):
     # check_firmware_update(config['dirigera_ip'], config['dirigera_port'], config['token'])
     devs: dict = load_devs(config)
     # Loading Complete
+    # Test connection
+    while not test_connection(config['dirigera_ip'], config['dirigera_port']):
+        u_in = input(
+            'Cannot connect to server. Please select an option:\n 1. Enter a different IP address\n 2. Enter a different port\n 3. All of the above.\n 4. Exit\n\n')
+        match u_in:
+            case "1":
+                config['dirigera_ip'] = input('Enter dirigera IP: ')
+            case "2":
+                config['dirigera_port'] = input('Enter dirigera port: ')
+            case "3":
+                config['dirigera_ip'] = input('Enter dirigera IP: ')
+                config['dirigera_port'] = input('Enter dirigera port: ')
+            case "4":
+                exit(0)
+            case _:
+                print("Invalid input. Please try again.")
+                continue
+        # Save new config
+        with open('config.json', 'r+') as f:
+            f.seek(0)
+            json.dump(config, f, indent=4)
+            f.truncate()
+    # Connection successful
     if len(args) == 0:
-        # repl(config['dirigera_ip'], config['dirigera_port'], config['token'], devs)
         run_gui(config, devs)
     else:
         dev_name = args[0]
