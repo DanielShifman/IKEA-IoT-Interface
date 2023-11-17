@@ -42,7 +42,7 @@ void Devices::Save() {
                 jsonStr[device.first] = device.second;
             }
         }
-        std::ofstream file("../config.json", std::ios::out);
+        std::ofstream file("../devices.json", std::ios::out);
         if (!file.is_open()) {
             throw std::runtime_error("Could not open file.");
         }
