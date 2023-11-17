@@ -14,7 +14,7 @@ void tests(Config& config, Devices& devices, Dirigera& dirigera) {
     //nlohmann::json lamp = dirigera.getDevice(devices.getDevice("Desk Lamp"));
     //cout << lamp.dump(4) << endl;
     //dirigera.identifyDevice(devices.getDevice("Desk Lamp"));
-    dirigera.setDeviceAttribute(devices.getDevice("Desk Lamp"), "isOn", true);
+    //dirigera.setDeviceAttribute(devices.getDevice("Desk Lamp"), "isOn", true);
 }
 
 int main(int argc, char** argv) {
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
                 dirigera.setDeviceAttribute(devices.getDevice(deviceName), attribute, value);
             }
         }
-        // tests(config, devices, dirigera);
+        tests(config, devices, dirigera);
     } catch (std::exception &e) {
         cout << e.what() << endl;
     }
