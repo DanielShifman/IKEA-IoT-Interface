@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
         try {
             devices = Devices("../devices.json");
         } catch (std::exception &e) {
-            if (strcmp(e.what(), "Could not open file.") == 0) {
+            if (strcmp(e.what(), "Could not open file.") == 0 || strcmp(e.what(), "Empty JSON file.") == 0) {
                 cout << "Devices file not found. Creating new devices file." << endl;
                 devices.Save();
             } else {

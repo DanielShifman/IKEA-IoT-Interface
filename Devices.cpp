@@ -22,7 +22,7 @@ void Devices::Load(const std::string &path) {
             devices[it.key()] = it.value();
         }
     } catch (std::exception &e) {
-        throw std::runtime_error("Error: " + std::string(e.what()));
+        throw std::runtime_error(std::string(e.what()));
     }
 }
 
