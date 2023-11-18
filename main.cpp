@@ -5,16 +5,53 @@
 #include "Devices.h"
 #include "Authenticator.h"
 #include "Dirigera.h"
+#include "DeviceWindow.h"
 
 using namespace std;
 
 vector<string> *boolable = new vector<string>{"isOn"};
 
-void tests(Config& config, Devices& devices, Dirigera& dirigera) {
-    //nlohmann::json lamp = dirigera.getDevice(devices.getDevice("Desk Lamp"));
-    //cout << lamp.dump(4) << endl;
-    //dirigera.identifyDevice(devices.getDevice("Desk Lamp"));
-    //dirigera.setDeviceAttribute(devices.getDevice("Desk Lamp"), "isOn", true);
+void run_gui(Config& config, Devices& devs, Dirigera dirigera, int argc, char** argv) {
+    // Initialize your application
+    QApplication app(argc, argv);
+
+    // Create the root window
+    auto* rootWindow = new QWidget();
+    rootWindow->setWindowTitle("IKEA Smart Device Interface");
+    rootWindow->resize(200,200);
+    rootWindow->setWindowIcon(QIcon("../ikea.png"));
+    rootWindow->show();
+
+    // Create a layout for the root window
+    auto* layout = new QVBoxLayout(rootWindow);
+    // Create a button for each device
+    unordered_map<string, DeviceWindow*> existingDeviceWindows = {};
+
+    for (const auto&[deviceName, deviceId] : devs.getDevices()) {
+        auto* button = new QPushButton(deviceName.c_str(), rootWindow);
+        button->setObjectName(deviceName.c_str());
+        button->setToolTip(("Open " + deviceName + " window").c_str());
+        layout->addWidget(button);
+        QObject::connect(button, &QPushButton::clicked, [&, deviceName, deviceId] {
+            // If the device window is not already open, open it. Otherwise, activate it.
+            if (existingDeviceWindows.find(deviceName) == existingDeviceWindows.end()) {
+                nlohmann::json deviceInfo = dirigera.getDevice(deviceId);
+                auto* deviceWindow = new DeviceWindow(deviceName, deviceInfo);
+                //deviceWindow->setParent(rootWindow);
+                deviceWindow->show();
+                cout << "Opening " << deviceName << " window." << endl;
+                existingDeviceWindows[deviceName] = deviceWindow;
+            } else {
+                existingDeviceWindows[deviceName]->activateWindow();
+            }
+        });
+    };
+
+    // Set the layout for the root window
+    rootWindow->setLayout(layout);
+
+    // Start the application event loop
+    QApplication::exec();
 }
 
 int main(int argc, char** argv) {
@@ -104,8 +141,9 @@ int main(int argc, char** argv) {
             } else {
                 dirigera.setDeviceAttribute(devices.getDevice(deviceName), attribute, value);
             }
+        } else {
+            run_gui(config, devices, dirigera, argc, argv);
         }
-        tests(config, devices, dirigera);
     } catch (std::exception &e) {
         cout << e.what() << endl;
     }
