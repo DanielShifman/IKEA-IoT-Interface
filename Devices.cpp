@@ -21,6 +21,8 @@ void Devices::Load(const std::string &path) {
         for (auto it = jsonObj.begin(); it != jsonObj.end(); ++it) {
             devices[it.key()] = it.value();
         }
+        file.close();
+        this->devicePath = path;
     } catch (std::exception &e) {
         throw std::runtime_error(std::string(e.what()));
     }
@@ -42,7 +44,7 @@ void Devices::Save() {
                 jsonStr[device.first] = device.second;
             }
         }
-        std::ofstream file("../devices.json", std::ios::out);
+        std::ofstream file(this->devicePath, std::ios::out);
         if (!file.is_open()) {
             throw std::runtime_error("Could not open file.");
         }

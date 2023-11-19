@@ -8,6 +8,7 @@
 class Devices {
 private:
     std::map<std::string, std::string> devices;
+    std::string devicePath;
 public:
 
     explicit Devices(const std::string &path);

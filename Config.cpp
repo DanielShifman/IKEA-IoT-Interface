@@ -4,7 +4,6 @@
 using json = nlohmann::ordered_json;
 
 Config::Config(const std::string &path) {
-
     Load(path);
 };
 
@@ -41,6 +40,8 @@ void Config::Load(const std::string& path) {
         } else {
             std::cout << "No token found." << std::endl;
         }
+        file.close();
+        this->configPath = path;
     } catch (std::exception &e) {
         throw std::runtime_error(std::string(e.what()));
     }
@@ -64,7 +65,7 @@ try {
         if (!token.empty()) {
             jsonStr["token"] = token;
         }
-        std::ofstream file("../config.json", std::ios::out);
+        std::ofstream file(this->configPath, std::ios::out);
         if (!file.is_open()) {
             throw std::runtime_error("Could not open file.");
         }

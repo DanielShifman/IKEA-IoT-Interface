@@ -12,6 +12,7 @@ public:
     std::string authCode;
     std::string verification;
     std::string token;
+    std::string configPath;
 
     [[maybe_unused]] Config(const std::string &_ip, const std::string &_port, const std::string &_authCode, const std::string &_verification, const std::string &_token):
             ip(_ip), port(_port), authCode(_authCode), verification(_verification), token(_token) {};

@@ -7,6 +7,8 @@
 #include "Dirigera.h"
 #include "DeviceWindow.h"
 
+#define RESOURCE_DIR_PATH "./resources/"
+
 using namespace std;
 
 vector<string> *boolable = new vector<string>{"isOn"};
@@ -19,7 +21,7 @@ void run_gui(Config& config, Devices& devs, Dirigera dirigera, int argc, char** 
     auto* rootWindow = new QWidget();
     rootWindow->setWindowTitle("IKEA Smart Device Interface");
     rootWindow->resize(200,200);
-    rootWindow->setWindowIcon(QIcon("../ikea.png"));
+    rootWindow->setWindowIcon(QIcon(RESOURCE_DIR_PATH "ikea.png"));
     rootWindow->show();
 
     // Create a layout for the root window
@@ -59,7 +61,7 @@ int main(int argc, char** argv) {
         Config config;
         Devices devices;
         try {
-            config = Config("../config.json");
+            config = Config(RESOURCE_DIR_PATH "config.json");
         } catch (std::exception &e) {
             if (strcmp(e.what(), "Could not open file.") == 0) {
                 cout << "Config file not found. Creating new config file." << endl;
@@ -74,7 +76,7 @@ int main(int argc, char** argv) {
         }
 
         try {
-            devices = Devices("../devices.json");
+            devices = Devices(RESOURCE_DIR_PATH "devices.json");
         } catch (std::exception &e) {
             if (strcmp(e.what(), "Could not open file.") == 0 || strcmp(e.what(), "Empty JSON file.") == 0) {
                 cout << "Devices file not found. Creating new devices file." << endl;
