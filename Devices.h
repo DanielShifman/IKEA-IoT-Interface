@@ -21,7 +21,7 @@ public:
     [[nodiscard]] std::string getDevice(const std::string& name) const {return devices.at(name);};
     void addDevice(const std::string& name, const std::string& id) {devices.insert(std::pair<std::string, std::string>(name, id));};
     [[nodiscard]] bool isEmpty() const {return devices.empty();};
-    [[nodiscard]] std::string toString() const;;
+    [[maybe_unused]] [[nodiscard]] std::string toString() const;;
 
     std::map<std::string, std::string>::iterator begin() {return devices.begin();};
     std::map<std::string, std::string>::iterator end() {return devices.end();};

@@ -1,7 +1,7 @@
 #include <iostream>
 #include "Devices.h"
 
-using json = nlohmann::json;
+using json = nlohmann::ordered_json;
 
 Devices::Devices(const std::string &path) {
     Load(path);
@@ -26,7 +26,7 @@ void Devices::Load(const std::string &path) {
     }
 }
 
-std::string Devices::toString() const {
+[[maybe_unused]] std::string Devices::toString() const {
     std::string str;
     for (const auto & device : devices) {
         str += device.first + ": " + device.second + "\n";

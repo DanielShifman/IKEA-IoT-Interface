@@ -7,7 +7,7 @@ void Dirigera::setDeviceAttribute(const std::string &id, const std::string &attr
     httplib::Headers headers = {
             {"Authorization", "Bearer " + this->token}
     };
-    nlohmann::json attr;
+    nlohmann::ordered_json attr;
     attr.push_back({
                            {"attributes", {
                                    {attribute, value}

@@ -35,8 +35,8 @@ void run_gui(Config& config, Devices& devs, Dirigera dirigera, int argc, char** 
         QObject::connect(button, &QPushButton::clicked, [&, deviceName, deviceId] {
             // If the device window is not already open, open it. Otherwise, activate it.
             if (existingDeviceWindows.find(deviceName) == existingDeviceWindows.end()) {
-                nlohmann::json deviceInfo = dirigera.getDevice(deviceId);
-                auto* deviceWindow = new DeviceWindow(deviceName, deviceInfo);
+                nlohmann::ordered_json deviceInfo = dirigera.getDevice(deviceId);
+                auto* deviceWindow = new DeviceWindow(deviceName, deviceInfo, dirigera);
                 //deviceWindow->setParent(rootWindow);
                 deviceWindow->show();
                 cout << "Opening " << deviceName << " window." << endl;
@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
             config.Save();
         }
         Dirigera dirigera(config.ip, config.port, config.token);
-        nlohmann::json devicesJson = dirigera.getDevices();
+        nlohmann::ordered_json devicesJson = dirigera.getDevices();
 
         for (auto &device : devicesJson) {
             devices.addDevice(device["attributes"]["customName"], device["id"]);

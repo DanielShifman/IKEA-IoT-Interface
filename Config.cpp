@@ -1,7 +1,7 @@
 #include <iostream>
 #include "Config.h"
 
-using json = nlohmann::json;
+using json = nlohmann::ordered_json;
 
 Config::Config(const std::string &path) {
 

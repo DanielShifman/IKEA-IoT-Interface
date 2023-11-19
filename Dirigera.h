@@ -14,13 +14,13 @@ public:
     Dirigera(std::string ip, std::string port, std::string token) : ip(std::move(ip)), port(std::move(port)), token(std::move(token)) {}
     ~Dirigera() = default;
 
-    nlohmann::json getDevices();
-    nlohmann::json getDevice(const std::string& id);
+    nlohmann::ordered_json getDevices();
+    nlohmann::ordered_json getDevice(const std::string& id);
     void identifyDevice(const std::string& id);
 
     template <typename T>
     void setDeviceAttribute(const std::string& id, const std::string& attribute, const T& value);
-    void setDeviceAttributes(const std::string& id, const nlohmann::json& attributes);
+    void setDeviceAttributes(const std::string& id, const nlohmann::ordered_json& attributes);
 };
 
 #include "Dirigera.tpp"

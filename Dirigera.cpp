@@ -1,6 +1,6 @@
 #include "Dirigera.h"
 
-nlohmann::json Dirigera::getDevices() {
+nlohmann::ordered_json Dirigera::getDevices() {
     httplib::Client client("https://" + this->ip + ":" + this->port);
     // disable certificate verification
     client.set_ca_cert_path("");
@@ -10,13 +10,13 @@ nlohmann::json Dirigera::getDevices() {
     };
     auto res = client.Get(endpointStrings.at(Endpoints::Devices), headers);
     if (res && res->status == 200) {
-        return nlohmann::json::parse(res->body);
+        return nlohmann::ordered_json::parse(res->body);
     } else {
         throw std::runtime_error("Could not get devices.");
     }
 }
 
-nlohmann::json Dirigera::getDevice(const std::string &id) {
+nlohmann::ordered_json Dirigera::getDevice(const std::string &id) {
     httplib::Client client("https://" + this->ip + ":" + this->port);
     // disable certificate verification
     client.set_ca_cert_path("");
@@ -26,7 +26,7 @@ nlohmann::json Dirigera::getDevice(const std::string &id) {
     };
     auto res = client.Get(endpointStrings.at(Endpoints::Devices) + "/" + id, headers);
     if (res && res->status == 200) {
-        return nlohmann::json::parse(res->body);
+        return nlohmann::ordered_json::parse(res->body);
     } else {
         throw std::runtime_error("Could not get device.");
     }
@@ -48,7 +48,7 @@ void Dirigera::identifyDevice(const std::string &id) {
     }
 }
 
-void Dirigera::setDeviceAttributes(const std::string &id, const nlohmann::json &attributes) {
+void Dirigera::setDeviceAttributes(const std::string &id, const nlohmann::ordered_json &attributes) {
     httplib::Client client("https://" + this->ip + ":" + this->port);
     // disable certificate verification
     client.set_ca_cert_path("");
