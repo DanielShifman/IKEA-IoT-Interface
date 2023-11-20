@@ -10,6 +10,7 @@ private:
     std::string ip;
     std::string port;
     std::string token;
+
 public:
     Dirigera(std::string ip, std::string port, std::string token) : ip(std::move(ip)), port(std::move(port)), token(std::move(token)) {}
     ~Dirigera() = default;
@@ -20,7 +21,7 @@ public:
 
     template <typename T>
     void setDeviceAttribute(const std::string& id, const std::string& attribute, const T& value);
-    void setDeviceAttributes(const std::string& id, const nlohmann::ordered_json& attributes);
+    void setDeviceAttributes(const std::string& id, const std::string& attributes);
 };
 
 #include "Dirigera.tpp"

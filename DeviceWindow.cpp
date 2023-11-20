@@ -1,11 +1,11 @@
-
 #include "DeviceWindow.h"
 
 DeviceWindow::DeviceWindow(const std::string &deviceName, nlohmann::ordered_json& deviceInfo, Dirigera& dirigera) {
     this->deviceName = deviceName;
     this->device = deviceInfo;
     this->dirigera = &dirigera;
-    this->setWindowTitle(deviceName.c_str());
+    this->setWindowTitle((deviceName + " Window").c_str());
+    this->setObjectName((deviceName + " Window").c_str());
 
     auto* layout = new QGridLayout();
     this->createIdButton(layout);
@@ -26,9 +26,9 @@ DeviceWindow::DeviceWindow(const std::string &deviceName, nlohmann::ordered_json
             lbLayout->addWidget(label);
             // HSL to RGB
             std::array<double, 3> HLS = {HSL[0]/360.0, HSL[2]/100.0, HSL[1]};
-            std::array<double, 3> RGB = HLStoRGB({HLS[0], HLS[1], HLS[2]});
+            this->RGBarr = HLStoRGB({HLS[0], HLS[1], HLS[2]});
             // RGB to hex
-            for (auto& colour : RGB) {
+            for (auto& colour : this->RGBarr) {
                 int colorInt = static_cast<int>(colour * 255);
                 std::stringstream stream;
                 stream << std::hex << colorInt;
@@ -37,11 +37,14 @@ DeviceWindow::DeviceWindow(const std::string &deviceName, nlohmann::ordered_json
                     result = std::string("0").append(result);
                 }
                 this->RGBHex += result;
-                std::cout << result << std::endl;
             }
             // Display colour as a button
             valueWidget = new QPushButton();
             valueWidget->setStyleSheet(("background-color: #" + this->RGBHex).c_str());
+            auto* pBtn = (QPushButton*)(valueWidget);
+            QWidget::connect(pBtn, &QPushButton::clicked, [this, pBtn] {
+                this->pickColour(pBtn);
+            });
             lbLayout->addWidget(valueWidget);
             layout->addLayout(lbLayout, layout->rowCount(), 0);
             HSLMade = true;
@@ -55,17 +58,59 @@ DeviceWindow::DeviceWindow(const std::string &deviceName, nlohmann::ordered_json
         auto* label = new QLabel(camelCaseToWords(attribute));
         lbLayout->addWidget(label);
 
-        // if the attribute is not a buttonable attribute, skip it
-        if (std::find(buttonableAttributes.begin(), buttonableAttributes.end(), attribute) == buttonableAttributes.end()) {
-            ;
+        // If the attribute is buttonable, widget is a button
+        // If the attribute is lightLevel, widget is a slider
+        // Otherwise, widget is a label
+        if (std::find(buttonableAttributes.begin(), buttonableAttributes.end(), attribute) != buttonableAttributes.end()) {
+            valueWidget = new QPushButton(value.dump().c_str());
+            if (value == true) {
+                valueWidget->setStyleSheet("border: 2px solid green; border-radius: 5px;");
+            } else {
+                valueWidget->setStyleSheet("border: 2px solid red; border-radius: 5px;");
+            }
+            auto* pBtn = (QPushButton*)(valueWidget);
+            QObject::connect(pBtn, &QPushButton::clicked, [this, attribute, pBtn] {
+                if (pBtn->text() == "true") {
+                    pBtn->setText("false");
+                    pBtn->setStyleSheet("border: 2px solid red; border-radius: 5px;");
+                    this->dirigera->setDeviceAttribute(this->device["id"], attribute, false);
+                } else {
+                    pBtn->setText("true");
+                    pBtn->setStyleSheet("border: 2px solid green; border-radius: 5px;");
+                    this->dirigera->setDeviceAttribute(this->device["id"], attribute, true);
+                }
+            });
+            lbLayout->addWidget(valueWidget);
         } else if (attribute == "lightLevel" and this->device["type"] == "light") {
-            ;
+            valueWidget = new lightLevelSlider(Qt::Horizontal);
+            auto* slider = (QSlider*)(valueWidget);
+            slider->setRange(1, 100);
+            slider->setSingleStep(10);
+            slider->setValue(static_cast<int>(value));
+            slider->setTickInterval(10);
+            slider->setTickPosition(QSlider::TicksBothSides);
+            auto* sliderLabel = new QLabel(value.dump().c_str());
+            QObject::connect(slider, &QSlider::sliderReleased, [this, attribute, slider] {
+                this->dirigera->setDeviceAttribute(this->device["id"], attribute, slider->value());
+            });
+            QObject::connect(slider, &QSlider::sliderMoved, [attribute, sliderLabel](int newValue) {
+                sliderLabel->setText(std::to_string(newValue).c_str());
+            });
+            QObject::connect(slider, &QSlider::valueChanged, [attribute, sliderLabel](int newValue) {
+                sliderLabel->setText(std::to_string(newValue).c_str());
+            });
+            auto* sliderLayout = new QHBoxLayout();
+            sliderLayout->addWidget(sliderLabel);
+            lbLayout->addSpacerItem(new QSpacerItem(this->width()/7, 0, QSizePolicy::Fixed, QSizePolicy::Fixed));
+            sliderLayout->addWidget(valueWidget);
+
+            lbLayout->addLayout(sliderLayout);
         } else {
-            ;
+            // Add the value as a label without quotes via regex
+            valueWidget = new QLabel(std::regex_replace(value.dump(), std::regex("\""), "").c_str());
+            lbLayout->addWidget(valueWidget);
         }
-        // Add the value as a label without quotes via regex
-        valueWidget = new QLabel(std::regex_replace(value.dump(), std::regex("\""), "").c_str());
-        lbLayout->addWidget(valueWidget);
+
         layout->addLayout(lbLayout, layout->rowCount(), 0);
     }
     this->resize(int(this->width()*0.5), this->height());
@@ -82,6 +127,7 @@ void* DeviceWindow::qt_metacast(const char *className) {
 int DeviceWindow::qt_metacall(QMetaObject::Call call, int id, void **args) {
     return QWidget::qt_metacall(call, id, args);
 }
+
 
 void DeviceWindow::createIdButton(QLayout *layout) {
     auto* idButton = new QPushButton("Identify");
@@ -150,4 +196,81 @@ char* DeviceWindow::camelCaseToWords(const std::string &camelCase) {
     strcpy_s(resultCharArray, result.size()+1, result.c_str());
 
     return resultCharArray;
+}
+
+void DeviceWindow::pickColour(QPushButton *pBtn) {
+    colourResult colour = this->openColourPicker();
+    if (colour.HSV[0] != -1 && colour.HSV[1] != -1 && colour.HSV[2] != -1) {
+        this->RGBarr = DeviceWindow::arr3i2d(colour.RGB);
+        for (auto& RGBComponent : this->RGBarr) {
+            RGBComponent /= 255;
+        }
+        std::string newRGBHex;
+        for (auto& RGBComponent : colour.RGB) {
+            // Convert each RGB component to hex
+            std::stringstream stream;
+            stream << std::hex << RGBComponent;
+            std::string result(stream.str());
+            if (result.length() == 1) {
+                result = std::string("0").append(result);
+            }
+            newRGBHex += result;
+        }
+        this->RGBHex = newRGBHex;
+        pBtn->setStyleSheet(("background-color: #" + newRGBHex).c_str());
+        try {
+            std::string jsonStr =
+            "["
+                "{"
+                    "\"attributes\": {"
+                        "\"colorHue\": " + std::to_string(colour.HSV[0]) + ","
+                        "\"colorSaturation\": " + std::to_string(colour.HSV[1]/255.0) +
+                    "}"
+                "}"
+            "]";
+            this->dirigera->setDeviceAttributes(this->device["id"], jsonStr);
+            this->RGBHex = newRGBHex;
+        } catch (std::exception& e) {
+            std::cout << e.what() << std::endl;
+        }
+    }
+}
+
+DeviceWindow::colourResult DeviceWindow::openColourPicker() {
+    // Scale RGBarr to 0-255
+    int rgbArr[3] = {static_cast<int>(this->RGBarr[0] * 255), static_cast<int>(this->RGBarr[1] * 255), static_cast<int>(this->RGBarr[2] * 255)};
+    auto colour = QColorDialog::getColor(QColor::fromRgb(rgbArr[0], rgbArr[1], rgbArr[2]), this);
+    if (colour.isValid()) {
+        std::array<int, 3> HSV = {colour.hue(), colour.saturation(), colour.value()};
+        std::array<int, 3> RGB = {colour.red(), colour.green(), colour.blue()};
+        return colourResult {HSV, RGB};
+    } else {
+        return {-1, -1, -1};
+    }
+}
+
+std::array<double, 3> DeviceWindow::arr3i2d(std::array<int, 3> RGB) {
+    return {static_cast<double>(RGB[0]), static_cast<double>(RGB[1]), static_cast<double>(RGB[2])};
+}
+
+void DeviceWindow::lightLevelSlider::mousePressEvent(QMouseEvent *event) {
+    // Retrieve the QStyleOptionSlider from the style
+    QStyleOptionSlider opt;
+    initStyleOption(&opt);
+
+    // Check if the click is on the slider thumb
+    QRect thumbRect = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
+    if (!thumbRect.contains(event->pos())) {
+        // Ignore the event if not on the thumb
+        event->ignore();
+        return;
+    }
+
+    // Call the base class implementation for thumb clicks
+    QSlider::mousePressEvent(event);
+}
+
+void DeviceWindow::lightLevelSlider::wheelEvent(QWheelEvent *event) {
+    // Prevent handling mouse wheel events
+    event->ignore();
 }

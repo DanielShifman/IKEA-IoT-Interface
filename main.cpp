@@ -13,8 +13,8 @@ using namespace std;
 
 vector<string> *boolable = new vector<string>{"isOn"};
 
-void run_gui(Config& config, Devices& devs, Dirigera dirigera, int argc, char** argv) {
-    // Initialize your application
+void run_gui(Devices& devs, Dirigera dirigera, int argc, char** argv) {
+    // Initialise application
     QApplication app(argc, argv);
 
     // Create the root window
@@ -26,25 +26,23 @@ void run_gui(Config& config, Devices& devs, Dirigera dirigera, int argc, char** 
 
     // Create a layout for the root window
     auto* layout = new QVBoxLayout(rootWindow);
-    // Create a button for each device
-    unordered_map<string, DeviceWindow*> existingDeviceWindows = {};
-
     for (const auto&[deviceName, deviceId] : devs.getDevices()) {
         auto* button = new QPushButton(deviceName.c_str(), rootWindow);
         button->setObjectName(deviceName.c_str());
         button->setToolTip(("Open " + deviceName + " window").c_str());
         layout->addWidget(button);
-        QObject::connect(button, &QPushButton::clicked, [&, deviceName, deviceId] {
-            // If the device window is not already open, open it. Otherwise, activate it.
-            if (existingDeviceWindows.find(deviceName) == existingDeviceWindows.end()) {
+        QObject::connect(button, &QPushButton::clicked, [&, deviceName, deviceId, rootWindow] {
+            std::string deviceWindowName = deviceName + " Window";
+            //If the device window is not already open, open it. Otherwise, activate it.
+            auto* existingWindow = rootWindow->findChild<QWidget *>(deviceWindowName.c_str(), Qt::FindDirectChildrenOnly);
+            if (existingWindow == nullptr) {
                 nlohmann::ordered_json deviceInfo = dirigera.getDevice(deviceId);
                 auto* deviceWindow = new DeviceWindow(deviceName, deviceInfo, dirigera);
-                //deviceWindow->setParent(rootWindow);
+                deviceWindow->setParent(rootWindow, Qt::Window);
+                deviceWindow->setAttribute(Qt::WA_DeleteOnClose);
                 deviceWindow->show();
-                cout << "Opening " << deviceName << " window." << endl;
-                existingDeviceWindows[deviceName] = deviceWindow;
             } else {
-                existingDeviceWindows[deviceName]->activateWindow();
+                existingWindow->activateWindow();
             }
         });
     };
@@ -132,7 +130,6 @@ int main(int argc, char** argv) {
         if (!devices.isEmpty()) {
             devices.Save();
         }
-        cout << argc << endl;
         if (argc > 1) {
             string deviceName = argv[1];
             string attribute = argv[2];
@@ -144,7 +141,7 @@ int main(int argc, char** argv) {
                 dirigera.setDeviceAttribute(devices.getDevice(deviceName), attribute, value);
             }
         } else {
-            run_gui(config, devices, dirigera, argc, argv);
+            run_gui(devices, dirigera, argc, argv);
         }
     } catch (std::exception &e) {
         cout << e.what() << endl;

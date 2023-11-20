@@ -48,7 +48,7 @@ void Dirigera::identifyDevice(const std::string &id) {
     }
 }
 
-void Dirigera::setDeviceAttributes(const std::string &id, const nlohmann::ordered_json &attributes) {
+void Dirigera::setDeviceAttributes(const std::string &id, const std::string &attributes) {
     httplib::Client client("https://" + this->ip + ":" + this->port);
     // disable certificate verification
     client.set_ca_cert_path("");
@@ -56,10 +56,11 @@ void Dirigera::setDeviceAttributes(const std::string &id, const nlohmann::ordere
     httplib::Headers headers = {
             {"Authorization", "Bearer " + this->token}
     };
-    auto res = client.Patch(endpointStrings.at(Endpoints::Devices) + "/" + id, headers, attributes.dump(), "application/json");
+    auto res = client.Patch(endpointStrings.at(Endpoints::Devices) + "/" + id, headers, attributes, "application/json");
     if (res && res->status == 202) {
         return;
     } else {
+        std::cout << res->body << std::endl;
         throw std::runtime_error("Could not set device attribute.");
     }
 }
