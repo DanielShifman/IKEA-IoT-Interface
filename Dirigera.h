@@ -20,7 +20,7 @@ public:
     void identifyDevice(const std::string& id);
 
     template <typename T>
-    void setDeviceAttribute(const std::string& id, const std::string& attribute, const T& value);
+    void setDeviceAttribute(const std::string& id, const std::string& attribute, const T& attributeValue, bool check = false);
     void setDeviceAttributes(const std::string& id, const std::string& attributes);
 };
 

@@ -136,9 +136,12 @@ int main(int argc, char** argv) {
             string value = argv[3];
             cout << "Setting " << deviceName << " " << attribute << " to " << value << endl;
             if (find(boolable->begin(), boolable->end(), attribute) != boolable->end()) {
-                dirigera.setDeviceAttribute(devices.getDevice(deviceName), attribute, bool(stoi(value)));
+                if (value == "auto")
+                    dirigera.setDeviceAttribute(devices.getDevice(deviceName), attribute, value, true);
+                else
+                    dirigera.setDeviceAttribute(devices.getDevice(deviceName), attribute, bool(stoi(value)), true);
             } else {
-                dirigera.setDeviceAttribute(devices.getDevice(deviceName), attribute, value);
+                dirigera.setDeviceAttribute(devices.getDevice(deviceName), attribute, value, true);
             }
         } else {
             run_gui(devices, dirigera, argc, argv);
