@@ -19,6 +19,7 @@ import requests
 from urllib3.exceptions import InsecureRequestWarning
 
 global freshFlag
+RESOURCE_DIR_PATH = "./resources/"
 
 endpoints = {
     'status': '/v1/hub/status',
@@ -82,10 +83,14 @@ def test_connection(ip: str, port: str, num_tries: int = 4):
 
 
 def load_config():
-    # Check if config file exists
-    if not os.path.isfile('config.json'):
+    # Check if resource directory exists
+    if not os.path.isdir(RESOURCE_DIR_PATH):
+        # Create resource directory
+        os.mkdir(RESOURCE_DIR_PATH)
+    # Check if config file does not exist or is empty
+    if not os.path.isfile(RESOURCE_DIR_PATH + 'config.json') or os.stat(RESOURCE_DIR_PATH + 'config.json').st_size == 0:
         # Create config file
-        with open('config.json', 'w') as f:
+        with open(RESOURCE_DIR_PATH + 'config.json', 'w') as f:
             config = {
                 'dirigera_ip': input('Enter dirigera IP: '),
                 'dirigera_port': input('Enter dirigera port: '),
@@ -94,7 +99,7 @@ def load_config():
                 'token': 'None'
             }
             json.dump(config, f, indent=4)
-    with open('config.json', 'r+') as f:
+    with open(RESOURCE_DIR_PATH + 'config.json', 'r+') as f:
         config = json.load(f)
         dirigera_ip: str = config['dirigera_ip']
         dirigera_port: str = config['dirigera_port']
@@ -153,7 +158,7 @@ def get_token(ip, port, auth_code, verification):
         print('Description: ' + r.json()['error'])
         exit(1)
     # Save token to config
-    with open('config.json', 'r+') as f:
+    with open(RESOURCE_DIR_PATH + 'config.json', 'r+') as f:
         config = json.load(f)
         config['token'] = token
         f.seek(0)
@@ -319,7 +324,7 @@ def store_device_id(devs: dict):
     devices = {}
     for dev in devs:
         devices[(dev['attributes'])['customName']] = dev['id']
-    with open('devices.json', 'w') as f:
+    with open(RESOURCE_DIR_PATH + 'devices.json', 'w') as f:
         json.dump(devices, f, indent=4)
 
 
@@ -366,7 +371,12 @@ def repl(ip: str, port: str, token: str, devs: list):
 
 
 def load_devs(config: dict):
-    with open('devices.json', 'r') as f:
+    # Check if devices file exists
+    if not os.path.isfile(RESOURCE_DIR_PATH + 'devices.json'):
+        # Create devices file
+        with open(RESOURCE_DIR_PATH + 'devices.json', 'w') as f:
+            json.dump({}, f, indent=4)
+    with open(RESOURCE_DIR_PATH + 'devices.json', 'r+') as f:
         devs: dict = json.load(f)
         if devs == {}:
             devs = list_devices(config['dirigera_ip'], config['dirigera_port'], config['token'])
@@ -592,7 +602,7 @@ def run_gui(config: dict, devs: dict):
     root_window = QWidget()
     root_window.setWindowTitle('IKEA Smart Device Interface')
     root_window.resize(200, 200)
-    root_window.setWindowIcon(QtGui.QIcon('ikea.png'))
+    root_window.setWindowIcon(QtGui.QIcon(RESOURCE_DIR_PATH + 'ikea.png'))
     root_window.show()
 
     # Layout
@@ -647,7 +657,7 @@ def main(args=sys.argv[1:]):
                 print("Invalid input. Please try again.")
                 continue
         # Save new config
-        with open('config.json', 'r+') as f:
+        with open(RESOURCE_DIR_PATH + 'config.json', 'r+') as f:
             f.seek(0)
             json.dump(config, f, indent=4)
             f.truncate()
