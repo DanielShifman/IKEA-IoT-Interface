@@ -241,87 +241,101 @@ bool Authenticator::TestConnection(const std::string& ip, const int& timeout) {
 #else
 // Linux-specific code
 std::string Authenticator::CreateChallenge(const std::string &verification) {
-    CryptoPP::SHA256 sha256;
+    // Use OpenSSL to calculate SHA-256 hash
+    CryptoPP::SHA256 hash;
     std::string digest;
-
-    CryptoPP::HashFilter filter(sha256);
-    filter.Attach(new CryptoPP::StringSink(digest));
-    filter.Put(reinterpret_cast<const unsigned char*>(verification.data()), verification.length());
-    filter.MessageEnd();
-
-    CryptoPP::Base64URLEncoder encoder;
-    encoder.Attach(new CryptoPP::StringSink(digest));
-    encoder.Put(reinterpret_cast<const unsigned char*>(digest.data()), digest.length());
-    encoder.MessageEnd();
-
-    // Convert to URL-safe Base64
-    std::replace(digest.begin(), digest.end(), '+', '-');
-    std::replace(digest.begin(), digest.end(), '/', '_');
-
-    // Remove padding characters '='
-    size_t padding = digest.find_last_not_of('=');
-    if (padding != std::string::npos)
-        digest.resize(padding + 1);
-
+    CryptoPP::StringSource(verification, true, new CryptoPP::HashFilter(hash, new CryptoPP::Base64URLEncoder(new CryptoPP::StringSink(digest))));
     return digest;
 }
 
-// Linux-specific code to test connection via ICMP ping
+// Unix-specific code to calculate checksum
+uint16_t checksum(uint16_t* data, size_t length) {
+    uint32_t sum = 0;
+    while (length > 1) {
+        sum += *data++;
+        length -= 2;
+    }
+
+    if (length > 0)
+        sum += *reinterpret_cast<uint8_t*>(data);
+
+    while (sum >> 16)
+        sum = (sum & 0xFFFF) + (sum >> 16);
+
+    return static_cast<uint16_t>(~sum);
+}
+
+// Unix-specific code to test connection via ICMP ping
 bool Authenticator::TestConnection(const std::string& ip, const int& timeout) {
-    const int maxBufferSize = 2048; // Adjust as needed
-    const int icmpHeaderOffset = 20; // Assuming a standard IP header size, adjust if needed
+    // If not root, return true
+    if (getuid() != 0) {
+        std::cout << "Warning: Not running as root. Skipping ping test." << std::endl;
+        return true;
+    }
+    // Prepare ICMP packet
+    const int dataSize = 32;  // Adjust as needed
+    char icmpData[dataSize] = {0};  // Adjust the data as needed
 
-    int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-    if (sockfd < 0) {
-        perror("socket");
+    // Create socket
+    int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    if (sock < 0) {
         return false;
     }
 
-    struct sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(ip.c_str());
-
-    struct icmphdr hdr{};
-    hdr.type = ICMP_ECHO;
-    hdr.un.echo.id = 0;
-    hdr.un.echo.sequence = 0;
-    hdr.checksum = checksum(reinterpret_cast<uint16_t*>(&hdr), sizeof(hdr));
-
-    ssize_t sentBytes = sendto(sockfd, &hdr, sizeof(hdr), 0, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
-    if (sentBytes <= 0) {
-        perror("sendto");
-        close(sockfd);
+    // Set timeout
+    struct timeval tv{};
+    tv.tv_sec = timeout / 1000;
+    tv.tv_usec = (timeout % 1000) * 1000;
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        close(sock);
         return false;
     }
 
-    struct timeval tv_out{};
-    tv_out.tv_sec = timeout / 1000;
-    tv_out.tv_usec = (timeout % 1000) * 1000;
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv_out, sizeof(tv_out));
+    // Prepare ICMP header
+    auto* icmpHeader = reinterpret_cast<struct icmp*>(icmpData);
+    icmpHeader->icmp_type = ICMP_ECHO;
+    icmpHeader->icmp_code = 0;
+    icmpHeader->icmp_seq = 0;
+    icmpHeader->icmp_cksum = 0;
+    icmpHeader->icmp_id = htons(getpid());
 
-    struct sockaddr_in r_addr{};
-    socklen_t len = sizeof(r_addr);
-    char buffer[maxBufferSize];
+    // Calculate checksum
+    icmpHeader->icmp_cksum = checksum(reinterpret_cast<uint16_t*>(icmpData), dataSize);
 
-    ssize_t receivedBytes = recvfrom(sockfd, buffer, maxBufferSize, 0, reinterpret_cast<struct sockaddr*>(&r_addr), &len);
-    if (receivedBytes <= 0) {
-        perror("recvfrom");
-        close(sockfd);
+    // Prepare destination address
+    struct sockaddr_in destAddr{};
+    destAddr.sin_family = AF_INET;
+    destAddr.sin_port = 0;
+    destAddr.sin_addr.s_addr = inet_addr(ip.c_str());
+
+    // Send ICMP packet
+    ssize_t bytesSent = sendto(sock, icmpData, dataSize, 0, reinterpret_cast<struct sockaddr*>(&destAddr), sizeof(destAddr));
+    if (bytesSent < 0) {
+        close(sock);
         return false;
     }
 
-    if (receivedBytes < icmpHeaderOffset + sizeof(struct icmphdr)) {
-        // Insufficient data received
-        close(sockfd);
+    // Receive ICMP reply
+    char icmpReply[dataSize + sizeof(struct iphdr)];
+    struct sockaddr_in replyAddr{};
+    socklen_t replyAddrLen = sizeof(replyAddr);
+    ssize_t bytesReceived = recvfrom(sock, icmpReply, sizeof(icmpReply), 0, reinterpret_cast<struct sockaddr*>(&replyAddr), &replyAddrLen);
+    close(sock);
+    if (bytesReceived < 0) {
         return false;
     }
 
-    struct icmphdr rcv_hdr{};
-    memcpy(&rcv_hdr, buffer + icmpHeaderOffset, sizeof(rcv_hdr));
+    // Check if the reply is valid
+    auto* ipHeader = reinterpret_cast<struct ip*>(icmpReply);
+    auto* icmpReplyHeader = reinterpret_cast<struct icmp*>(icmpReply + (ipHeader->ip_hl << 2));
+    if (icmpReplyHeader->icmp_type == ICMP_ECHOREPLY && icmpReplyHeader->icmp_id == htons(getpid())) {
+        // Successfully received ICMP Echo Reply
+        return true;
+    } else {
+        // Failed to receive ICMP Echo Reply
+        return false;
+    }
 
-    const int echoReplyType = 0;
-    close(sockfd);
-    return rcv_hdr.type == echoReplyType;
 }
 
 #endif

@@ -34,7 +34,7 @@ public:
     [[maybe_unused]] static std::string Authorise(const std::string& ip, const int& port, const std::string& verification);
     [[maybe_unused]] static std::string GetToken(const std::string& ip, const int& port, const std::string& authCode, const std::string& verification, const int& depth);
     [[maybe_unused]] static std::string GetVerification();
-    static bool TestConnection(const std::string& ip, const int& numTries);
+    static bool TestConnection(const std::string& ip, const int& timeout);
 
     [[maybe_unused]] static std::string Status(const std::string& ip, const int& port);
 };

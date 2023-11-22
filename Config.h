@@ -28,6 +28,7 @@ public:
     [[nodiscard]] std::string toString() const {return "ip: " + ip + "\nport: " + port + "\nauthCode: " + authCode + "\nverification: " + verification + "\ntoken: " + token;};
 
     void Save();
+    void Save(const std::string& path);
 };
 
 

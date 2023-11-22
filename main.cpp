@@ -7,6 +7,11 @@
 #include "Dirigera.h"
 #include "DeviceWindow.h"
 
+// If  linux
+#ifdef __linux__
+#include <sys/wait.h>
+#endif // __linux__
+
 #define RESOURCE_DIR_PATH "./resources/"
 
 using namespace std;
@@ -58,6 +63,9 @@ int main(int argc, char** argv) {
     try {
         Config config;
         Devices devices;
+        if (!filesystem::exists(RESOURCE_DIR_PATH)) {
+            filesystem::create_directory(RESOURCE_DIR_PATH);
+        }
         try {
             config = Config(RESOURCE_DIR_PATH "config.json");
         } catch (std::exception &e) {
@@ -67,7 +75,7 @@ int main(int argc, char** argv) {
                 cin >> config.ip;
                 cout << "Enter dirigera port: ";
                 cin >> config.port;
-                config.Save();
+                config.Save(RESOURCE_DIR_PATH "config.json");
             } else {
                 throw std::runtime_error(std::string(e.what()));
             }
@@ -78,7 +86,7 @@ int main(int argc, char** argv) {
         } catch (std::exception &e) {
             if (strcmp(e.what(), "Could not open file.") == 0 || strcmp(e.what(), "Empty JSON file.") == 0) {
                 cout << "Devices file not found. Creating new devices file." << endl;
-                devices.Save();
+                devices.Save(RESOURCE_DIR_PATH "devices.json");
             } else {
                 throw std::runtime_error(std::string(e.what()));
             }

@@ -8,7 +8,7 @@ void Dirigera::setDeviceAttribute(const std::string &id, const std::string &attr
             {"Authorization", "Bearer " + this->token}
     };
 
-    nlohmann::basic_json attrObj = {
+    nlohmann::basic_json<> attrObj = {
             {"attributes", {
                     {attribute, attributeValue}
             }}
@@ -29,7 +29,7 @@ void Dirigera::setDeviceAttribute(const std::string &id, const std::string &attr
             }
         }
     }
-    nlohmann::ordered_json attr;
+    nlohmann::json attr;
     attr.push_back(attrObj);
     auto res = client.Patch(endpointStrings.at(Endpoints::Devices) + "/" + id, headers, attr.dump(), "application/json");
     if (res && res->status == 202) {

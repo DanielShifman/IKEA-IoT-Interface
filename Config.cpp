@@ -4,6 +4,7 @@
 using json = nlohmann::ordered_json;
 
 Config::Config(const std::string &path) {
+    this->configPath = path;
     Load(path);
 };
 
@@ -41,7 +42,9 @@ void Config::Load(const std::string& path) {
             std::cout << "No token found." << std::endl;
         }
         file.close();
-        this->configPath = path;
+        if (this->configPath != path) {
+            this->configPath = path;
+        }
     } catch (std::exception &e) {
         throw std::runtime_error(std::string(e.what()));
     }
@@ -74,4 +77,9 @@ try {
     } catch (std::exception &e) {
         std::cout << "Error: " << e.what() << std::endl;
     }
-};
+}
+
+void Config::Save(const std::string &path) {
+    this->configPath = path;
+    Save();
+}
