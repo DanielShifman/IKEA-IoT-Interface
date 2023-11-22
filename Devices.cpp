@@ -4,6 +4,7 @@
 using json = nlohmann::ordered_json;
 
 Devices::Devices(const std::string &path) {
+    this->devicePath = path;
     Load(path);
 }
 
@@ -53,4 +54,9 @@ void Devices::Save() {
     } catch (std::exception &e) {
         std::cout << "Error: " << e.what() << std::endl;
     }
+}
+
+void Devices::Save(const std::string &path) {
+    this->devicePath = path;
+    Save();
 };

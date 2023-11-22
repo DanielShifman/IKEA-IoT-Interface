@@ -18,6 +18,7 @@ public:
 
     void Load(const std::string& path);
     void Save();
+    void Save(const std::string& path);
     [[nodiscard]] std::map<std::string, std::string> getDevices() const {return devices;};
     [[nodiscard]] std::string getDevice(const std::string& name) const {return devices.at(name);};
     void addDevice(const std::string& name, const std::string& id) {devices.insert(std::pair<std::string, std::string>(name, id));};

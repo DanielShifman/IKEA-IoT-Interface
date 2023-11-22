@@ -44,7 +44,7 @@ The Windows build is written for VC++ 2019. It may work with other versions (not
     - Add the Qt bin directory to your PATH.
     - Don't forget to add the library to your linker.
 ##### Unix-based
-The Linux build is written for G++ 13.2.0. It may work with other versions (not guaranteed).
+The Unix build is written for G++ 13.2.0. It may work with other versions (not guaranteed).
 1. Install Qt.
     - You only need the Qt 5.15.2 GCC 64-bit version prebuilt binaries.
     - Available from the Qt installer for open source users (LGPLv3).
@@ -59,6 +59,8 @@ The Linux build is written for G++ 13.2.0. It may work with other versions (not 
     - Please note that requirements.txt will allow newer versions of the modules to be installed, although only the versions listed have been tested.
 
 ### Usage
+*If running on a Unix-based system, please ensure that the program is run as root.*
+*If not, some features may not work as intended.*
 #### First launch
 Upon first launch, the program will create resources subdirectory in the current directory.
 This directory will contain the configuration and device ID cache files.
