@@ -24,7 +24,7 @@ Libraries supplied via git:
 - [cpp-httplib](https://github.com/yhirose/cpp-httplib.git)
 - [crypto++](https://github.com/weidai11/cryptopp.git)
 
-Libraries not supplied via git submodules:
+Libraries not supplied via git:
 - [Qt](https://www.qt.io/download)
 #### Python
 Minimum Python version: 3.10\
