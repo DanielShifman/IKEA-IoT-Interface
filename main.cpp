@@ -7,11 +7,6 @@
 #include "Dirigera.h"
 #include "DeviceWindow.h"
 
-// If  linux
-#ifdef __linux__
-#include <sys/wait.h>
-#endif // __linux__
-
 #define RESOURCE_DIR_PATH "./resources/"
 
 using namespace std;
