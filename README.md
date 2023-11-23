@@ -50,7 +50,6 @@ The Unix build is written for G++ 13.2.0. It may work with other versions (not g
     - Available from the Qt installer for open source users (LGPLv3).
     - Add the Qt bin directory to your PATH.
     - Don't forget to add the library to your linker.
-- Please note that the Linux build is untested as of the current version.
 ##### All platforms
 2. Compile the source using your preferred compilation method.
 #### Python
