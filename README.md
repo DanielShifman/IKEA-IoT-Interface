@@ -72,7 +72,7 @@ If you do not know this information:
    - Your router's DHCP client list.
    - [nmap](https://nmap.org/).
    - Guessing. (Not recommended)
-   -  The port it is likely 8443.
+-  The port it is likely 8443.
 
 The program will then attempt to connect to the gateway.
 If the connection is successful, you will be prompted to press the action button on the gateway.
