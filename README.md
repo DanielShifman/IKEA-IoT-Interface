@@ -44,7 +44,7 @@ The Windows build is written for VC++ 2019. It may work with other versions (not
     - Add the Qt bin directory to your PATH.
     - Don't forget to add the library to your linker.
 ##### Unix-based
-The Unix build is written for G++ 13.2.0. It may work with other versions (not guaranteed).
+The Unix build is written for g++ 13.2.0. It may work with other versions (not guaranteed).
 1. Install Qt.
     - You only need the Qt 5.15.2 GCC 64-bit version prebuilt binaries.
     - Available from the Qt installer for open source users (LGPLv3).
@@ -69,10 +69,10 @@ One such file is included in the repository.
 You will be prompted to enter the IP address and port of the gateway.\
 If you do not know this information:
 -  You can find the IP address using various methods such as:
-- Your router's DHCP client list.
-- [nmap](https://nmap.org/).
-- Guessing. (Not recommended)
--  The port it is likely 8443.
+   - Your router's DHCP client list.
+   - [nmap](https://nmap.org/).
+   - Guessing. (Not recommended)
+   -  The port it is likely 8443.
 
 The program will then attempt to connect to the gateway.
 If the connection is successful, you will be prompted to press the action button on the gateway.
