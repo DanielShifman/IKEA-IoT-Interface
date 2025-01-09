@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
         bool connection = Authenticator::TestConnection(config.ip, pingTimeout);
         while (!connection) {
             char userIn;
-            cout << "Cannot connect to server at "<< config.ip << ":" << config.port <<". Please select an option:\n 1. Enter a different IP address\n 2. Enter a different port\n 3. All of the above.\n 4. Exit\n\n";
+            cout << "Cannot connect to server at "<< config.ip << ":" << config.port <<". Please select an option:\n 1. Enter a different IP address\n 2. Enter a different port\n 3. All of the above\n 4. Retry connection\n 5. Exit\n\n";
             cin >> userIn;
             switch (userIn) {
                 case '1':
@@ -109,6 +109,9 @@ int main(int argc, char** argv) {
                     connection = Authenticator::TestConnection(config.ip, pingTimeout);
                     continue;
                 case '4':
+                    connection = Authenticator::TestConnection(config.ip, pingTimeout);
+                    continue;
+                case '5':
                     return 0;
                 default:
                     cout << "Invalid input. Please try again." << endl;
