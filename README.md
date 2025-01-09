@@ -24,7 +24,7 @@ Libraries supplied via git:
 - [cpp-httplib](https://github.com/yhirose/cpp-httplib.git)
 - [crypto++](https://github.com/weidai11/cryptopp.git)
 
-Libraries not supplied via git submodules:
+Libraries not supplied via git:
 - [Qt](https://www.qt.io/download)
 #### Python
 Minimum Python version: 3.10\
@@ -44,13 +44,12 @@ The Windows build is written for VC++ 2019. It may work with other versions (not
     - Add the Qt bin directory to your PATH.
     - Don't forget to add the library to your linker.
 ##### Unix-based
-The Linux build is written for G++ 13.2.0. It may work with other versions (not guaranteed).
+The Unix build is written for g++ 13.2.0. It may work with other versions (not guaranteed).
 1. Install Qt.
     - You only need the Qt 5.15.2 GCC 64-bit version prebuilt binaries.
     - Available from the Qt installer for open source users (LGPLv3).
     - Add the Qt bin directory to your PATH.
     - Don't forget to add the library to your linker.
-- Please note that the Linux build is untested as of the current version.
 ##### All platforms
 2. Compile the source using your preferred compilation method.
 #### Python
@@ -59,6 +58,8 @@ The Linux build is written for G++ 13.2.0. It may work with other versions (not 
     - Please note that requirements.txt will allow newer versions of the modules to be installed, although only the versions listed have been tested.
 
 ### Usage
+*If running on a Unix-based system, please ensure that the program is run as root.*
+*If not, some features may not work as intended.*
 #### First launch
 Upon first launch, the program will create resources subdirectory in the current directory.
 This directory will contain the configuration and device ID cache files.
@@ -68,10 +69,10 @@ One such file is included in the repository.
 You will be prompted to enter the IP address and port of the gateway.\
 If you do not know this information:
 -  You can find the IP address using various methods such as:
-- Your router's DHCP client list.
-- [nmap](https://nmap.org/).
-- Guessing. (Not recommended)
--  The port it is likely 8443.
+   - Your router's DHCP client list.
+   - [nmap](https://nmap.org/).
+   - Guessing. (Not recommended)
+-  The port is likely 8443.
 
 The program will then attempt to connect to the gateway.
 If the connection is successful, you will be prompted to press the action button on the gateway.

@@ -193,7 +193,8 @@ char* DeviceWindow::camelCaseToWords(const std::string &camelCase) {
 
     // Convert the result to a char array
     char* resultCharArray = new char[result.size() + 1];
-    strcpy_s(resultCharArray, result.size()+1, result.c_str());
+    std::copy(result.begin(), result.end(), resultCharArray);
+    resultCharArray[result.size()] = '\0';
 
     return resultCharArray;
 }
